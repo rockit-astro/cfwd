@@ -1,0 +1,22 @@
+_cfw()
+{
+    compopt +o default
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="set status json init kill"
+
+    case "${prev}" in
+        set)
+            opts=$(cfw list-filters)
+            ;;
+        *)
+            ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
+    return 0
+}
+
+complete -F _cfw cfw

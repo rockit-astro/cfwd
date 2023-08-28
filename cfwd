@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+#
+# This file is part of the Robotic Observatory Control Kit (rockit)
+#
+# rockit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rockit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with rockit.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Daemon for controlling a FLI Colour Filter Wheel via Pyro"""
+
+import argparse
+from ctypes import c_long, c_char_p, byref, POINTER, CDLL
+import datetime
+import threading
+import time
+from astropy.time import Time
+import astropy.units as u
+import Pyro4
+from rockit.common import log, TryLock
+from rockit.common.helpers import pyro_client_matches
+from rockit.cfw import CommandStatus, Config, CFWStatus
+
+
+class CFWDaemon:
+    """Daemon interface for a FLI colour filter wheel"""
+    def __init__(self, config):
+        self._config = config
+        self._driver = CDLL('/usr/lib64/libfli.so')
+        self._device = c_long(-1)
+
+        self._command_lock = threading.Lock()
+        self._state_lock = threading.Lock()
+        self._status = CFWStatus.Disabled
+        self._filter = config.filters[0]
+
+    @Pyro4.expose
+    def report_status(self):
+        """Returns a dictionary containing the current filter wheel state"""
+        with self._state_lock:
+            data = {
+                'date': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'status': self._status
+            }
+
+            if self._status == CFWStatus.Idle:
+                data['filter'] = self._filter
+
+            return data
+
+    def _wait_for_movement(self):
+        remaining = c_long()
+        start = Time.now()
+        while True:
+            self._driver.FLIGetStepsRemaining(self._device, byref(remaining))
+            if remaining.value == 0:
+                return True
+            if (Time.now() - start) > self._config.move_timeout * u.s:
+                return False
+            time.sleep(0.1)
+
+    @Pyro4.expose
+    def initialize(self):
+        """Connects to the device"""
+        if not pyro_client_matches(self._config.control_ips):
+            return CommandStatus.InvalidControlIP
+
+        with TryLock(self._command_lock) as success:
+            if not success:
+                return CommandStatus.Blocked
+
+            if self._status != CFWStatus.Disabled:
+                return CommandStatus.NotDisconnected
+
+            with self._state_lock:
+                self._status = CFWStatus.Initializing
+
+            # Use the first found USB filter wheel (0x202 = FLIDEVICE_FILTERWHEEL | FLIDOMAIN_USB)
+            devices = POINTER(c_char_p)()
+            self._driver.FLIList(c_long(0x202), byref(devices))
+            try:
+                if not devices or not devices[0]:
+                    return CommandStatus.DeviceNotFound
+
+                name, _ = devices[0].split(b";")
+                self._driver.FLIOpen(byref(self._device), name, c_long(0x202))
+            finally:
+                self._driver.FLIFreeList(devices)
+
+            # Home device and wait for completion
+            self._driver.FLIHomeDevice(self._device)
+            if not self._wait_for_movement():
+                log.error(self._config.log_name, 'Filter change timed out')
+                with self._state_lock:
+                    self._driver.FLIClose(self._device)
+                    self._device = c_long(-1)
+                    return CommandStatus.Failed
+
+            log.info(self._config.log_name, 'Filter wheel connected')
+            log.info(self._config.log_name, 'Filter set to ' + self._config.filters[0])
+
+            with self._state_lock:
+                self._status = CFWStatus.Idle
+                self._filter = self._config.filters[0]
+            return CommandStatus.Succeeded
+
+    @Pyro4.expose
+    def shutdown(self):
+        """Disconnects from the device"""
+        if not pyro_client_matches(self._config.control_ips):
+            return CommandStatus.InvalidControlIP
+
+        with TryLock(self._command_lock) as success:
+            if not success:
+                return CommandStatus.Blocked
+
+            if self._status == CFWStatus.Disabled:
+                return CommandStatus.NotConnected
+
+            log.info(self._config.log_name, 'Filter wheel disconnected')
+            with self._state_lock:
+                self._driver.FLIClose(self._device)
+                self._device = c_long(-1)
+                self._status = CFWStatus.Disabled
+
+            return CommandStatus.Succeeded
+
+    @Pyro4.expose
+    def set_filter(self, filter_name):
+        """Changes the filter"""
+        if not pyro_client_matches(self._config.control_ips):
+            return CommandStatus.InvalidControlIP
+
+        if not filter_name in self._config.filters:
+            return CommandStatus.InvalidFilter
+
+        with TryLock(self._command_lock) as success:
+            if not success:
+                return CommandStatus.Blocked
+
+            if self._status == CFWStatus.Disabled:
+                return CommandStatus.NotConnected
+
+            with self._state_lock:
+                self._status = CFWStatus.Moving
+
+            self._driver.FLISetFilterPos(self._device, self._config.filters.index(filter_name))
+            if not self._wait_for_movement():
+                log.error(self._config.log_name, 'Filter change timed out')
+                with self._state_lock:
+                    self._driver.FLIClose(self._device)
+                    self._device = c_long(-1)
+                    self._status = CFWStatus.Disabled
+                    return CommandStatus.Failed
+
+            log.info(self._config.log_name, 'Filter set to ' + self._config.filters[0])
+            with self._state_lock:
+                self._filter = filter_name
+                self._status = CFWStatus.Idle
+
+            return CommandStatus.Succeeded
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Colour Filter Wheel Server')
+    parser.add_argument('config', help='Path to configuration json file')
+    args = parser.parse_args()
+    _config = Config(args.config)
+    _config.daemon.launch(CFWDaemon(_config))

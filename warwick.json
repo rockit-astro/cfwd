@@ -1,0 +1,7 @@
+{
+  "daemon": "warwick_filterwheel",
+  "log_name": "cfwd@warwick",
+  "control_machines": ["WarwickTCS"],
+  "move_timeout": 10,
+  "filters": ["NONE", "B", "V", "R", "I"]
+}
