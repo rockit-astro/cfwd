@@ -16,10 +16,10 @@ mkdir -p %{buildroot}/etc/bash_completion.d
 mkdir -p %{buildroot}%{_sysconfdir}/cfwd/
 mkdir -p %{buildroot}%{_udevrulesdir}
 
-%{__install} %{_sourcedir}/cfw %{buildroot}%{_bindir}
+%{__install} %{_sourcedir}/filter %{buildroot}%{_bindir}
 %{__install} %{_sourcedir}/cfwd %{buildroot}%{_bindir}
 %{__install} %{_sourcedir}/cfwd@.service %{buildroot}%{_unitdir}
-%{__install} %{_sourcedir}/completion/cfw %{buildroot}/etc/bash_completion.d
+%{__install} %{_sourcedir}/completion/filter %{buildroot}/etc/bash_completion.d
 
 %{__install} %{_sourcedir}/warwick.json %{buildroot}%{_sysconfdir}/cfwd/
 
@@ -43,8 +43,8 @@ Requires: python3-rockit-cfw
 
 %files client
 %defattr(0755,root,root,-)
-%{_bindir}/cfw
-/etc/bash_completion.d/cfw
+%{_bindir}/filter
+/etc/bash_completion.d/filter
 
 %package data-warwick
 Summary: CFW data for Windmill Hill Observatory telescope

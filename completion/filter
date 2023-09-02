@@ -1,4 +1,4 @@
-_cfw()
+_filter()
 {
     compopt +o default
     local cur prev opts
@@ -9,7 +9,7 @@ _cfw()
 
     case "${prev}" in
         set)
-            opts=$(cfw list-filters)
+            opts=$(filter list-filters)
             ;;
         *)
             ;;
@@ -19,4 +19,4 @@ _cfw()
     return 0
 }
 
-complete -F _cfw cfw
+complete -F _filter filter

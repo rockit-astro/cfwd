@@ -24,12 +24,12 @@ The configuration options are:
 
 The automated packaging scripts will push 4 RPM packages to the observatory package repository:
 
-| Package            | Description                                                                     |
-|--------------------|---------------------------------------------------------------------------------|
-| rockit-cfw-server  | Contains the `cfwd` server and systemd service file.                            |
-| rockit-cfw-client  | Contains the `cfw` commandline utility for controlling the filter wheel server. |
-| python3-rockit-cfw | Contains the python module with shared code.                                    |
-| warwick-cfw-data   | Contains the json configuration for the Windmill Hill Observatory telescope.    |
+| Package            | Description                                                                        |
+|--------------------|------------------------------------------------------------------------------------|
+| rockit-cfw-server  | Contains the `cfwd` server and systemd service file.                               |
+| rockit-cfw-client  | Contains the `filter` commandline utility for controlling the filter wheel server. |
+| python3-rockit-cfw | Contains the python module with shared code.                                       |
+| warwick-cfw-data   | Contains the json configuration for the Windmill Hill Observatory telescope.       |
 
 After installing packages, the systemd service should be enabled:
 
@@ -65,5 +65,5 @@ sudo systemctl restart cfwd@<config>
 The camera server and client can be run directly from a git clone:
 ```
 ./cfwd test.json
-CFWD_CONFIG_PATH=./warwick.json ./cfw status
+CFWD_CONFIG_PATH=./warwick.json ./filter status
 ```
