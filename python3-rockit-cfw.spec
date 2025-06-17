@@ -1,6 +1,6 @@
 Name:           python3-rockit-cfw
 Version:        %{_version}
-Release:        1
+Release:        1%{dist}
 License:        GPL3
 Summary:        Common backend code for FLI colour filter wheel daemon
 Url:            https://github.com/rockit-astro/cfwd

@@ -1,6 +1,6 @@
 Name:      rockit-cfw
 Version:   %{_version}
-Release:   1
+Release:   1%{dist}
 Summary:   FLI Colour Filter Wheel.
 Url:       https://github.com/rockit-astro/cfwd
 License:   GPL-3.0
