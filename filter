@@ -23,7 +23,7 @@ import os
 import sys
 import Pyro4
 from rockit.common import TFmt
-from rockit.cfw import Config, CommandStatus, CFWStatus
+from rockit.filterwheel.fli import Config, CommandStatus, CFWStatus
 
 
 SCRIPT_NAME = os.path.basename(sys.argv[0])
@@ -32,15 +32,15 @@ sys.excepthook = Pyro4.util.excepthook
 
 def run_command(command, args):
     """Runs a daemon command, handling error messages"""
-    if 'CFWD_CONFIG_PATH' in os.environ:
-        config = Config(os.environ['CFWD_CONFIG_PATH'])
+    if 'FILTERWHEELD_CONFIG_PATH' in os.environ:
+        config = Config(os.environ['FILTERWHEELD_CONFIG_PATH'])
     else:
-        # Load the config file defined in the CFWD_CONFIG_PATH environment variable or from the
-        # default system location (/etc/cfwd/). Exit with an error if zero or multiple are found.
-        files = glob.glob("/etc/cfwd/*.json")
+        # Load the config file defined in the FILTERWHEELD_CONFIG_PATH environment variable or from the
+        # default system location (/etc/filterwheeld/). Exit with an error if zero or multiple are found.
+        files = glob.glob("/etc/filterwheeld/*.json")
         if len(files) != 1:
             print('error: failed to guess the default config file. ' +
-                  'Run as CFWD_CONFIG_PATH=/path/to/config.json cfw <command>')
+                  'Run as FILTERWHEELD_CONFIG_PATH=/path/to/config.json filter <command>')
             return 1
 
         config = Config(files[0])
@@ -58,8 +58,8 @@ def run_command(command, args):
 
 def print_status(config, _):
     """Prints a human-readable summary of the filter wheel status"""
-    with config.daemon.connect() as cfwd:
-        data = cfwd.report_status()
+    with config.daemon.connect() as daemon:
+        data = daemon.report_status()
 
     print(f'Filter Wheel is {CFWStatus.label(data[f"status"], True)}')
     if 'filter' in data:
@@ -69,8 +69,8 @@ def print_status(config, _):
 
 def print_json(config, _):
     """Prints a machine-readable summary of the filter wheel status"""
-    with config.daemon.connect() as cfwd:
-        print(json.dumps(cfwd.report_status() or {}))
+    with config.daemon.connect() as daemon:
+        print(json.dumps(daemon.report_status() or {}))
 
     return 0
 
@@ -78,22 +78,22 @@ def print_json(config, _):
 def set_filter(config, args):
     """Select a filter"""
     if len(args) == 1 and (args[0] in config.filters):
-        with config.daemon.connect(timeout=config.move_timeout + 5) as cfwd:
-            return cfwd.set_filter(args[0])
+        with config.daemon.connect(timeout=config.move_timeout + 5) as daemon:
+            return daemon.set_filter(args[0])
     print(f'usage: {SCRIPT_NAME} set ({"|".join(config.filters)})')
     return -1
 
 
 def initialize(config, _):
     """Connect to the filter wheel"""
-    with config.daemon.connect(timeout=config.move_timeout + 5) as cfwd:
-        return cfwd.initialize()
+    with config.daemon.connect(timeout=config.move_timeout + 5) as daemon:
+        return daemon.initialize()
 
 
 def shutdown(config, *_):
     """Disconnect from the filter wheel"""
-    with config.daemon.connect() as cfwd:
-        return cfwd.shutdown()
+    with config.daemon.connect() as daemon:
+        return daemon.shutdown()
 
 
 def print_filters(config, *_):

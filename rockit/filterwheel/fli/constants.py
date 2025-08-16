@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with rockit.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Constants and status codes used by cfwd"""
+"""Constants and status codes used by filterwheeld"""
 
 from rockit.common import TFmt
 
@@ -42,7 +42,7 @@ class CommandStatus:
         8: 'error: filter wheel is already connected',
 
         -100: 'error: terminated by user',
-        -101: 'error: unable to communicate with cfw daemon',
+        -101: 'error: unable to communicate with filter wheel daemon',
     }
 
     @classmethod
@@ -54,7 +54,7 @@ class CommandStatus:
 
 
 class CFWStatus:
-    """Status of the cfw hardware"""
+    """Status of the filter wheel hardware"""
     Disabled, Initializing, Idle, Moving = range(4)
 
     _labels = {
