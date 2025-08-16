@@ -22,7 +22,7 @@ import json
 import os
 import sys
 import Pyro4
-from rockit.common import TFmt
+from rockit.common import print
 from rockit.filterwheel.fli import Config, CommandStatus, CFWStatus
 
 
@@ -63,7 +63,7 @@ def print_status(config, _):
 
     print(f'Filter Wheel is {CFWStatus.label(data[f"status"], True)}')
     if 'filter' in data:
-        print(f'Filter is {TFmt.Bold}{data["filter"]}{TFmt.Clear}')
+        print(f'Filter is [b]{data["filter"]}[/b]')
     return 0
 
 
